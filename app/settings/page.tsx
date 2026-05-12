@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { users as initialUsers } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth";
@@ -46,6 +46,16 @@ export default function SettingsPage() {
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0].id);
   const [selectedIntegrationName, setSelectedIntegrationName] = useState(integrations[0].name);
   const [selectedNotificationKey, setSelectedNotificationKey] = useState(notificationItems[0].key);
+  const [notifPrefs, setNotifPrefs] = useState(notificationItems.map(n => ({ ...n, enabled: true })));
+
+  useEffect(() => {
+    fetch("/api/users").then(r => r.json()).then(data => {
+      if (Array.isArray(data)) { setUsers(data); if (data.length > 0) setSelectedUserId(data[0].id); }
+    }).catch(() => {});
+    fetch("/api/notifications").then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setNotifPrefs(data);
+    }).catch(() => {});
+  }, []);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -72,28 +82,49 @@ export default function SettingsPage() {
 
   const isAdmin = user?.role === "Admin";
 
-  const handleToggleActive = (id: string) => {
+  const handleToggleActive = async (id: string) => {
     if (!isAdmin) { showToast("Bu işlemi yapmak için Admin yetkisi gereklidir.", "error"); return; }
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, active: !u.active } : u));
-    showToast("Kullanıcı durumu güncellendi.");
+    const u = users.find(u => u.id === id);
+    if (!u) return;
+    try {
+      await fetch(`/api/users/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !u.active }) });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, active: !u.active } : u));
+      showToast("Kullanıcı durumu güncellendi.");
+    } catch { showToast("Güncelleme başarısız.", "error"); }
   };
 
-  const handleRoleChange = (id: string, role: string) => {
+  const handleRoleChange = async (id: string, role: string) => {
     if (!isAdmin) { showToast("Bu işlemi yapmak için Admin yetkisi gereklidir.", "error"); return; }
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
-    showToast("Rol güncellendi.");
+    try {
+      await fetch(`/api/users/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
+      showToast("Rol güncellendi.");
+    } catch { showToast("Güncelleme başarısız.", "error"); }
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.department) {
       showToast("Tüm alanlar zorunludur.", "error"); return;
     }
-    const id = `u${Date.now()}`;
-    setUsers(prev => [...prev, { ...newUser, id, active: true }]);
-    setSelectedUserId(id);
-    setShowAddModal(false);
-    setNewUser({ name: "", email: "", role: "Destek", department: "" });
-    showToast("Kullanıcı eklendi.");
+    try {
+      const res = await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newUser) });
+      const data = await res.json();
+      if (data.ok) {
+        setUsers(prev => [...prev, data.entry]);
+        setSelectedUserId(data.entry.id);
+        setShowAddModal(false);
+        setNewUser({ name: "", email: "", role: "Destek", department: "" });
+        showToast("Kullanıcı eklendi.");
+      }
+    } catch { showToast("Ekleme başarısız.", "error"); }
+  };
+
+  const handleSaveNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: notifPrefs }) });
+      const data = await res.json();
+      if (data.ok) showToast("Bildirim tercihleri kaydedildi.");
+    } catch { showToast("Kaydetme başarısız.", "error"); }
   };
 
   const selectedUser = users.find(u => u.id === selectedUserId) ?? users[0];
@@ -401,7 +432,7 @@ export default function SettingsPage() {
               <span className="pill info">Operasyon</span>
             </div>
             <div className="status-list">
-              {notificationItems.map(item => (
+              {notifPrefs.map(item => (
                 <div
                   key={item.key}
                   className={`status-row selectable-row ${item.key === selectedNotification.key ? "is-selected" : ""}`}
@@ -410,16 +441,16 @@ export default function SettingsPage() {
                   <span>{item.label}</span>
                   <button
                     type="button"
-                    className="button sm secondary"
-                    onClick={(e) => { e.stopPropagation(); setSelectedNotificationKey(item.key); showToast(`${item.label} ayarı güncellendi.`); }}
+                    className={`button sm ${item.enabled ? "secondary" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); setNotifPrefs(prev => prev.map(n => n.key === item.key ? { ...n, enabled: !n.enabled } : n)); }}
                   >
-                    {item.target}
+                    {item.enabled ? item.target : "Kapalı"}
                   </button>
                 </div>
               ))}
             </div>
             <div style={{ marginTop: 16 }}>
-              <button type="button" className="button" onClick={() => showToast("Bildirim tercihleri kaydedildi.")}>
+              <button type="button" className="button" onClick={handleSaveNotifications}>
                 Kaydet
               </button>
             </div>

@@ -41,4 +41,7 @@ Kısa, net ve aksiyona dönük yaz."""
         )
         return {"summary": response.text, "generatedAt": datetime.utcnow().isoformat()}
     except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        err = str(e)
+        if "429" in err or "quota" in err.lower():
+            raise HTTPException(status_code=429, detail="Gemini API kota limiti aşıldı. Lütfen birkaç dakika sonra tekrar deneyin.")
+        raise HTTPException(status_code=502, detail=err)

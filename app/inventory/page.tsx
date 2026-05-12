@@ -1,17 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { inventoryHealth, InventoryItem } from "@/lib/mock-data";
 
 type Toast = { msg: string; type: "success" | "error" } | null;
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>(inventoryHealth);
+  const [items, setItems] = useState<InventoryItem[]>([]);
   const [toast, setToast] = useState<Toast>(null);
   const [loadingSkus, setLoadingSkus] = useState<Set<string>>(new Set());
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [editStock, setEditStock] = useState("");
-  const [selectedSku, setSelectedSku] = useState(inventoryHealth[0].sku);
+  const [selectedSku, setSelectedSku] = useState("");
+
+  useEffect(() => {
+    fetch("/api/inventory").then(r => r.json()).then((data: InventoryItem[]) => {
+      setItems(data);
+      if (data.length > 0) setSelectedSku(data[0].sku);
+    }).catch(() => {
+      setItems(inventoryHealth);
+      setSelectedSku(inventoryHealth[0].sku);
+    });
+  }, []);
 
   const critical = items.filter(i => i.stock <= i.reorderPoint || i.depletionDays <= 7);
   const avgLead = Math.round(items.reduce((a, i) => a + i.supplierLeadDays, 0) / items.length);
@@ -63,26 +73,29 @@ export default function InventoryPage() {
 
   const handleOrder = async (sku: string) => {
     setLoadingSkus(prev => new Set(prev).add(sku));
-    await new Promise(r => setTimeout(r, 1200));
-    setItems(prev => prev.map(i =>
-      i.sku === sku
-        ? { ...i, stock: i.stock + 20, depletionDays: Math.round((i.stock + 20) / (i.weeklyVelocity / 7)) }
-        : i
-    ));
-    showToast(`${sku} için tedarik siparişi verildi. Stok güncellendi.`);
+    try {
+      const res = await fetch("/api/inventory/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sku, quantity: 20 }) });
+      const data = await res.json();
+      if (data.ok) {
+        setItems(prev => prev.map(i => i.sku === sku ? { ...i, stock: data.entry.stock, depletionDays: data.entry.depletionDays } : i));
+        showToast(`${sku} için tedarik siparişi verildi. Stok güncellendi.`);
+      }
+    } catch { showToast("Sipariş verilemedi.", "error"); }
     setLoadingSkus(prev => { const s = new Set(prev); s.delete(sku); return s; });
   };
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editItem) return;
     const n = parseInt(editStock);
     if (isNaN(n) || n < 0) { showToast("Geçersiz stok değeri.", "error"); return; }
-    setItems(prev => prev.map(i =>
-      i.sku === editItem.sku
-        ? { ...i, stock: n, depletionDays: Math.max(1, Math.round(n / (i.weeklyVelocity / 7))) }
-        : i
-    ));
-    showToast(`${editItem.sku} stoku ${n} olarak güncellendi.`);
+    try {
+      const res = await fetch(`/api/inventory/${editItem.sku}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stock: n }) });
+      const data = await res.json();
+      if (data.ok) {
+        setItems(prev => prev.map(i => i.sku === editItem.sku ? { ...i, stock: data.entry.stock, depletionDays: data.entry.depletionDays } : i));
+        showToast(`${editItem.sku} stoku ${n} olarak güncellendi.`);
+      }
+    } catch { showToast("Güncelleme başarısız.", "error"); }
     setEditItem(null);
     setEditStock("");
   };

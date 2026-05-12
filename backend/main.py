@@ -11,6 +11,11 @@ from app.api.report import router as report_router
 from app.api.shipping import router as shipping_router
 from app.api.supply_webhook import router as supply_webhook_router
 from app.api.notify import router as notify_router
+from app.api.tasks import router as tasks_router
+from app.api.inventory import router as inventory_router
+from app.api.users import router as users_router
+from app.api.notifications import router as notifications_router
+from app.api.dashboard import router as dashboard_router
 
 # Load .env.local from project root (Next.js convention), fallback to .env
 project_root = Path(__file__).resolve().parent.parent
@@ -42,6 +47,11 @@ app.include_router(report_router, prefix="/api")
 app.include_router(shipping_router, prefix="/api")
 app.include_router(supply_webhook_router, prefix="/api")
 app.include_router(notify_router, prefix="/api")
+app.include_router(tasks_router, prefix="/api")
+app.include_router(inventory_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(notifications_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():

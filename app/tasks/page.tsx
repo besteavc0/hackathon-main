@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { tasks as initialTasks } from "@/lib/mock-data";
 
-type Task = typeof initialTasks[0] & { status: string };
+type Task = { id: string; title: string; owner: string; due: string; reason: string; status: string };
 type Toast = { msg: string; type: "success" | "error" } | null;
 
 function displayStatus(status: string) {
@@ -23,43 +23,62 @@ function orderRefFor(task: Task) {
 }
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [toast, setToast] = useState<Toast>(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: "", owner: "", due: "", reason: "" });
-  const [selectedTaskId, setSelectedTaskId] = useState(initialTasks[0].id);
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+
+  useEffect(() => {
+    fetch("/api/tasks").then(r => r.json()).then((data: Task[]) => {
+      setTasks(data);
+      if (data.length > 0) setSelectedTaskId(data[0].id);
+    }).catch(() => {
+      setTasks(initialTasks as Task[]);
+      setSelectedTaskId(initialTasks[0].id);
+    });
+  }, []);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleComplete = (id: string) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "Tamamlandi" } : t));
-    showToast("Görev tamamlandı olarak işaretlendi.");
+  const handleComplete = async (id: string) => {
+    try {
+      await fetch(`/api/tasks/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Tamamlandi" }) });
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "Tamamlandi" } : t));
+      showToast("Görev tamamlandı olarak işaretlendi.");
+    } catch { showToast("Güncelleme başarısız.", "error"); }
   };
 
-  const handleDelete = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-    if (selectedTaskId === id) {
-      const next = tasks.find(t => t.id !== id);
-      if (next) setSelectedTaskId(next.id);
-    }
-    showToast("Görev silindi.");
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      setTasks(prev => prev.filter(t => t.id !== id));
+      if (selectedTaskId === id) {
+        const next = tasks.find(t => t.id !== id);
+        if (next) setSelectedTaskId(next.id);
+      }
+      showToast("Görev silindi.");
+    } catch { showToast("Silme başarısız.", "error"); }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.title || !form.owner || !form.due) {
       showToast("Başlık, sorumlu ve tarih zorunludur.", "error"); return;
     }
-    const id = `task-${Date.now()}`;
-    setTasks(prev => [...prev, {
-      id, ...form, status: "Acik"
-    }]);
-    setSelectedTaskId(id);
-    setShowModal(false);
-    setForm({ title: "", owner: "", due: "", reason: "" });
-    showToast("Görev eklendi.");
+    try {
+      const res = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const data = await res.json();
+      if (data.ok) {
+        setTasks(prev => [...prev, data.entry]);
+        setSelectedTaskId(data.entry.id);
+        setShowModal(false);
+        setForm({ title: "", owner: "", due: "", reason: "" });
+        showToast("Görev eklendi.");
+      }
+    } catch { showToast("Ekleme başarısız.", "error"); }
   };
 
   const open = tasks.filter(t => t.status === "Acik").length;

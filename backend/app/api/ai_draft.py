@@ -46,5 +46,8 @@ Sadece müşteriye gönderilecek yanıt metnini yaz. Selamlama ile başla, özü
         )
         return {"draft": response.text}
     except Exception as e:
-        print("[ai-draft] Fetch hatası:", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        err = str(e)
+        print("[ai-draft] Fetch hatası:", err)
+        if "429" in err or "quota" in err.lower():
+            raise HTTPException(status_code=429, detail="Gemini API kota limiti aşıldı. Lütfen birkaç dakika sonra tekrar deneyin.")
+        raise HTTPException(status_code=500, detail=err)

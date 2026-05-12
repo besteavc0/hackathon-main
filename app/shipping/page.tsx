@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { shipments, Shipment } from "@/lib/mock-data";
 
@@ -24,12 +24,27 @@ function displayRisk(risk: Shipment["risk"] | RiskFilter) {
 }
 
 export default function ShippingPage() {
-  const [data] = useState<Shipment[]>(shipments);
+  const [data, setData] = useState<Shipment[]>([]);
   const [notifying, setNotifying] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   const [filterRisk, setFilterRisk] = useState<RiskFilter>("Tumu");
-  const [selectedShipmentKey, setSelectedShipmentKey] = useState(() => shipmentKey(shipments[0]));
+  const [selectedShipmentKey, setSelectedShipmentKey] = useState("");
+
+  useEffect(() => {
+    fetch("/api/shipping").then(r => r.json()).then((res) => {
+      if (Array.isArray(res)) {
+        setData(res as Shipment[]);
+        if (res.length > 0) setSelectedShipmentKey(shipmentKey(res[0] as Shipment));
+      } else {
+        setData(shipments);
+        setSelectedShipmentKey(shipmentKey(shipments[0]));
+      }
+    }).catch(() => {
+      setData(shipments);
+      setSelectedShipmentKey(shipmentKey(shipments[0]));
+    });
+  }, []);
 
   const critical = data.filter(s => s.risk === "Yuksek").length;
   const filtered = filterRisk === "Tumu" ? data : data.filter(s => s.risk === filterRisk);
