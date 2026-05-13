@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
@@ -26,11 +27,10 @@ export default function LoginPage() {
   return (
     <div className="login-root">
       <div className="login-card">
-        <div className="login-brand">
-          <div className="brand-mark" aria-hidden />
+        <div className="login-brand" style={{ marginBottom: "32px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", textAlign: "center" }}>
+          <Image src="/logo.png" alt="OpsMind AI Logo" width={220} height={60} priority style={{ width: "auto", height: "auto", maxHeight: "60px" }} />
           <div>
-            <h1 className="brand-title">OpsMind AI</h1>
-            <p className="brand-tagline">Operasyon Yönetim Platformu</p>
+            <p className="brand-tagline" style={{ fontSize: "0.95rem" }}>Akıllı Operasyon Yönetim Platformu</p>
           </div>
         </div>
 

@@ -63,8 +63,8 @@ ul { margin: 0; padding-left: 18px; }
 
 .login-card {
   width: 100%;
-  max-width: 420px;
-  padding: 30px;
+  max-width: 500px;
+  padding: 40px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
