@@ -87,27 +87,12 @@ export default function ShippingPage() {
 
   const handleDownload = async () => {
     setDownloading(true);
-    await new Promise(r => setTimeout(r, 1000));
-
-    const header = ["Sipariş", "Müşteri", "Ürün", "Firma", "Takip No", "Varış", "Durum", "SLA (saat)", "Tahmini Teslimat", "Risk"];
-    const rows = data.map(s => [
-      s.orderId, s.customer, s.product, s.provider,
-      s.trackingNo, s.destination, s.status,
-      s.slaHoursLeft.toString(), s.estimatedDelivery, displayRisk(s.risk)
-    ]);
-    const csvContent = [header, ...rows].map(r => r.map(cell => `"${cell}"`).join(",")).join("\n");
-    const bom = "\uFEFF";
-    const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `kargo-raporu-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    showToast("Kargo raporu indirildi.");
+    try {
+      window.location.href = "/api/shipping/export";
+      showToast("Kargo raporu indirildi.");
+    } catch {
+      showToast("Rapor indirilemedi.", "error");
+    }
     setDownloading(false);
   };
 

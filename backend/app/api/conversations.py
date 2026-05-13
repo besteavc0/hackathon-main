@@ -29,7 +29,7 @@ async def get_conversations():
         SELECT
             id, customer, channel, topic,
             last_message  AS "lastMessage",
-            status, unread,
+            status, unread, sentiment,
             order_ref     AS "orderRef",
             ai_draft      AS "aiDraft",
             updated_at    AS "updatedAt"
@@ -48,7 +48,7 @@ async def get_conversation(conv_id: str):
         SELECT
             id, customer, channel, topic,
             last_message  AS "lastMessage",
-            status, unread,
+            status, unread, sentiment,
             order_ref     AS "orderRef",
             ai_draft      AS "aiDraft",
             updated_at    AS "updatedAt"
@@ -99,7 +99,7 @@ async def update_conversation(conv_id: str, req: ConversationUpdate):
         RETURNING
             id, customer, channel, topic,
             last_message AS "lastMessage",
-            status, unread,
+            status, unread, sentiment,
             order_ref    AS "orderRef",
             ai_draft     AS "aiDraft",
             updated_at   AS "updatedAt"

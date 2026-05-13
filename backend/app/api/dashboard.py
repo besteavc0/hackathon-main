@@ -16,7 +16,6 @@ async def get_dashboard():
             COALESCE(SUM(total_try), 0)                       AS revenue_try,
             COUNT(*) FILTER (WHERE fulfillment_status != 'Teslim') AS active_orders
         FROM orders
-        WHERE created_at >= now() - INTERVAL '24 hours'
         """
     )
 
